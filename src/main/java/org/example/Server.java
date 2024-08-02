@@ -1,5 +1,10 @@
 package org.example;
 
+import org.example.factory.Factory;
+import org.example.handler.Handler;
+import org.example.model.User;
+import org.example.service.Service;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 
@@ -11,7 +16,7 @@ public class Server {
         this.port = port;
     }
 
-    void start() {
+    public void start() {
         try (var server = new ServerSocket(this.port)) {
             System.out.println("Сервер запущен на порту 8080");
             while (true) {
@@ -25,7 +30,7 @@ public class Server {
     }
 
     public static void main(String[] args) {
-        var port = Integer.parseInt(args[0]);
-        new Server(port).start();
+       Factory.init();
+       new Server(8080).start();
     }
 }
