@@ -113,11 +113,6 @@ public class Handler extends Thread {
                                 }
 
                             }
-//                            try {
-//                                m.invoke(Factory.getController(), new User());
-//                            } catch (IllegalAccessException | InvocationTargetException e) {
-//                                throw new RuntimeException(e);
-//                            }
                         }
                     }
                 }

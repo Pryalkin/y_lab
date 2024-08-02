@@ -5,6 +5,8 @@ import org.example.emun.Role;
 public class User {
 
     private Long id;
+    private String name;
+    private String surname;
     private String username;
     private String password;
     private String role;
@@ -41,10 +43,28 @@ public class User {
         this.role = role;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getSurname() {
+        return surname;
+    }
+
+    public void setSurname(String surname) {
+        this.surname = surname;
+    }
+
     @Override
     public String toString() {
         return "User{" +
                 "id=" + id +
+                ", name='" + name + '\'' +
+                ", surname='" + surname + '\'' +
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", role='" + role + '\'' +
