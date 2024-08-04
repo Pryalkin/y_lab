@@ -1,19 +1,14 @@
 package org.example.handler;
 
 import org.example.annotation.Url;
-import org.example.controller.Controller;
 import org.example.factory.Factory;
-import org.example.model.User;
-import org.example.service.Service;
 
 import java.io.*;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 public class Handler extends Thread {
 
@@ -25,7 +20,15 @@ public class Handler extends Thread {
         put("", "text/plain");
     }};
 
+    private static final List<String> AUTHORIZE_HTTP_REQUEST = new ArrayList<>() {{
+        add("/registration");
+        add("/login");
+    }};
+
+    public static final String TOKEN_PREFIX = "Bearer ";
+
     private static final String NOT_FOUND_MESSAGE = "NOT FOUND";
+    private static final String LOGIN = "/login";
 
     private Socket socket;
 
@@ -44,74 +47,137 @@ public class Handler extends Thread {
             String[] parts = requestLine.split(" ");
             String method = parts[0];
             String uri = parts[1];
-            System.out.println(uri);
 
+            // Анализируем класс Controller
             Method[] methods = Factory.getController().getClass().getMethods();
             for (Method m: methods){
+                // Анализируем методы на наличие Аннотации Url
                 if(m.isAnnotationPresent(Url.class)){
                     Url an = m.getAnnotation(Url.class);
+                    // Анализируем найденную Аннотацию Url на соответствие uri с запроса
                     if(an.name().equals(uri)){
+                        // Анализируем найденную Аннотацию Url на соответствие метода из CRUD с запроса
                         if(an.method().equals(method)){
-                            Parameter[] parameters = m.getParameters();
-                            if(parameters.length > 0){
-//                                parseObject();
-                                int contentLength = 0;
-                                while ((requestLine = input.readLine()) != null && !requestLine.isEmpty()) {
-                                    if (requestLine.startsWith("Content-Length: ")) {
-                                        // Извлекаем значение Content-Length
-                                        contentLength = Integer.parseInt(requestLine.split(": ")[1]);
-                                        System.out.println("Content-Length: " + contentLength);
+                            int contentLength = 0;
+                            String authorities = null;
+                            // Извлекаем с Header HTTP протокола данные
+                            while ((requestLine = input.readLine()) != null && !requestLine.isEmpty()) {
+                                if (requestLine.startsWith("Content-Length: ")) {
+                                    // Извлекаем значение Content-Length
+                                    contentLength = Integer.parseInt(requestLine.split(": ")[1]);
+                                    System.out.println("Content-Length: " + contentLength);
+                                }
+                                if (requestLine.startsWith("Authorization: ")) {
+                                    // Извлекаем значение Authorization
+                                    authorities = requestLine.split(": ")[1].substring(TOKEN_PREFIX.length());
+                                    System.out.println("Authorization: " + authorities);
+                                }
+                            }
+                            // Аннализируем запрос на наличие прав доступа
+                            if(AUTHORIZE_HTTP_REQUEST.stream().noneMatch(auth -> auth.equals(uri))){
+                                if(Factory.getService().checkToken(authorities)) {
+                                    var type = CONTENT_TYPES.get("json");
+                                    this.sendHeader(output, 401, "UNAUTHORIZED", type, 0, null);
+                                    return;
+                                }
+                            }
+                            // Обработка метода POST
+                            if(an.method().equals("POST") || an.method().equals("PUT")){
+                                Parameter[] parameters = m.getParameters();
+                                if(parameters.length == 1){
+
+                                    // Читаем тело запроса
+                                    StringBuilder body = new StringBuilder();
+                                    for (int i = 0; i < contentLength; i++) {
+                                        body.append((char) input.read());
                                     }
-                                }
+                                    String requestBody = body.toString();
+                                    System.out.println(requestBody);
+                                    Map<String, String> jsonObject = parseJson(requestBody);
 
-                                // Читаем тело запроса
-                                StringBuilder body = new StringBuilder();
-                                for (int i = 0; i < contentLength; i++) {
-                                    body.append((char) input.read());
-                                }
-                                String requestBody = body.toString();
-                                Map<String, String> jsonObject = parseJson(requestBody);
+                                    Field[] fields = parameters[0].getType().getDeclaredFields();
 
-                                Field[] fields = parameters[0].getType().getDeclaredFields();
-                                Method[] methodsModel = parameters[0].getType().getDeclaredMethods();
-
-                                for(Method methodModel: methodsModel){
-                                    System.out.println(methodModel.getName());
-                                }
-
-                                List<String> fieldsModel = new ArrayList<>();
-                                for(Field field: fields){
-                                    jsonObject.keySet().forEach(key -> {
-                                        if(key.equals(field.getName())) fieldsModel.add(key);
-                                    });
-                                }
-
-                                fieldsModel.forEach(System.out::println);
-
-                               Class<?> model = parameters[0].getType();
-                                try {
-                                   Constructor<?> constructor = model.getConstructor();
-                                    Object object = constructor.newInstance();
-                                    Field[] fieldsObj = object.getClass().getDeclaredFields();
-                                    for(Field field: fieldsObj){
-                                        fieldsModel.forEach(f ->{
-                                            if (f.equals(field.getName())){
-                                                field.setAccessible(true);
-                                                try {
-                                                    System.out.println(jsonObject.get(f));
-                                                    field.set(object, jsonObject.get(f));
-                                                } catch (IllegalAccessException e) {
-                                                    throw new RuntimeException(e);
-                                                }
-                                            }
+                                    List<String> fieldsModel = new ArrayList<>();
+                                    for(Field field: fields){
+                                        jsonObject.keySet().forEach(key -> {
+                                            if(key.equals(field.getName())) fieldsModel.add(key);
                                         });
                                     }
-                                    m.invoke(Factory.getController(), object);
-                                } catch (NoSuchMethodException | IllegalAccessException | InstantiationException |
-                                         InvocationTargetException e) {
+
+                                    Class<?> model = parameters[0].getType();
+                                    try {
+                                        Constructor<?> constructor = model.getConstructor();
+                                        Object object = constructor.newInstance();
+                                        Field[] fieldsObj = object.getClass().getDeclaredFields();
+                                        for(Field field: fieldsObj){
+                                            fieldsModel.forEach(f ->{
+                                                if (f.equals(field.getName())){
+                                                    field.setAccessible(true);
+                                                    try {
+                                                        field.set(object, jsonObject.get(f));
+                                                    } catch (IllegalAccessException e) {
+                                                        throw new RuntimeException(e);
+                                                    }
+                                                }
+                                            });
+                                        }
+                                        String response  = (String) m.invoke(Factory.getController(), object);
+                                        var type = CONTENT_TYPES.get("json");
+                                        if (uri.equals(LOGIN)){
+                                            this.sendHeader(output, 200, "OK", type, response.length(), response);
+                                            output.write(response.getBytes());
+                                        } else {
+                                            this.sendHeader(output, 200, "OK", type, response.length(), null);
+                                            output.write(response.getBytes());
+                                        }
+
+                                    } catch (NoSuchMethodException | IllegalAccessException | InstantiationException |
+                                             InvocationTargetException e) {
+                                        throw new RuntimeException(e);
+                                    }
+
+                                }
+                            } else if (an.method().equals("GET")){
+                                try {
+                                    String response = (String) m.invoke(Factory.getController());
+                                    var type = CONTENT_TYPES.get("");
+                                    this.sendHeader(output, 200, "OK", type, response.length(), null);
+                                    output.write(response.getBytes());
+                                } catch (IllegalAccessException e) {
+                                    throw new RuntimeException(e);
+                                } catch (InvocationTargetException e) {
                                     throw new RuntimeException(e);
                                 }
+                            } else if (an.method().equals("DELETE")) {
+                                Parameter[] parameters = m.getParameters();
+                                if(parameters.length == 1){
 
+                                    // Читаем тело запроса
+                                    StringBuilder body = new StringBuilder();
+                                    for (int i = 0; i < contentLength; i++) {
+                                        body.append((char) input.read());
+                                    }
+                                    String requestBody = body.toString();
+                                    Map<String, String> jsonObject = parseJson(requestBody);
+                                    System.out.println(jsonObject);
+                                    try {
+                                        String str = jsonObject.get(jsonObject.keySet().stream().findFirst().get());
+                                        String response  = (String) m.invoke(Factory.getController(), str);
+                                        var type = CONTENT_TYPES.get("json");
+                                        if (uri.equals(LOGIN)){
+                                            this.sendHeader(output, 200, "OK", type, response.length(), response);
+                                            output.write(response.getBytes());
+                                        } else {
+                                            this.sendHeader(output, 200, "OK", type, response.length(), null);
+                                            output.write(response.getBytes());
+                                        }
+
+                                    } catch (IllegalAccessException  |
+                                             InvocationTargetException e) {
+                                        throw new RuntimeException(e);
+                                    }
+
+                                }
                             }
                         }
                     }
@@ -202,11 +268,13 @@ public class Handler extends Thread {
         return extensionStart == -1 ? "" : name.substring(extensionStart + 1);
     }
 
-    private void sendHeader(OutputStream output, int statusCode, String statusText, String type, long lenght) {
-        var ps = new PrintStream(output);
-        ps.printf("HTTP/1.1 %s %s%n", statusCode, statusText);
-        ps.printf("Content-Type: %s%n", type);
+    private void sendHeader(OutputStream output, int statusCode, String statusText, String type, long lenght, String token) {
+        var ps = new PrintWriter(output);
+        ps.println("HTTP/1.1 " + statusCode + " " + statusText);
+        ps.println("Content-Type: " + type);
+        if (token != null) ps.printf("Authorization: %s%n", "Bearer " + token);
         ps.printf("Content-Length: %s%n%n", lenght);
+        ps.flush();
     }
 
     private static Map<String, String> parseJson(String jsonString) {
