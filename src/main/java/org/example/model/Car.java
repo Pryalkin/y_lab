@@ -2,11 +2,80 @@ package org.example.model;
 
 public class Car {
 
-    private Long id;
+    private String id;
     private String brand;
     private String model;
     private String yearOfIssue;
-    private Double price;
+    private String price;
     private String state;
+    private String inStock;
 
+    @Override
+    public String toString() {
+        return "{" +
+                "id:" + id +
+                ", brand:'" + brand + '\'' +
+                ", model:'" + model + '\'' +
+                ", yearOfIssue:'" + yearOfIssue + '\'' +
+                ", price:'" + price + '\'' +
+                ", state:'" + state + '\'' +
+                ", inStock:'" + inStock + '\'' +
+                '}';
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getBrand() {
+        return brand;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public String getYearOfIssue() {
+        return yearOfIssue;
+    }
+
+    public String getPrice() {
+        return price;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setBrand(String brand) {
+        this.brand = brand;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public void setYearOfIssue(String yearOfIssue) {
+        this.yearOfIssue = yearOfIssue;
+    }
+
+    public void setPrice(String price) {
+        this.price = price;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getInStock() {
+        return inStock;
+    }
+
+    public void setInStock(String inStock) {
+        this.inStock = inStock;
+    }
 }

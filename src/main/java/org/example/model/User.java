@@ -1,21 +1,19 @@
 package org.example.model;
 
-import org.example.emun.Role;
-
 public class User {
 
-    private Long id;
+    private String id;
     private String name;
     private String surname;
     private String username;
     private String password;
     private String role;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -61,13 +59,13 @@ public class User {
 
     @Override
     public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", surname='" + surname + '\'' +
-                ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
-                ", role='" + role + '\'' +
+        return "{" +
+                "id:" + id +
+                ", name:'" + name + '\'' +
+                ", surname:'" + surname + '\'' +
+                ", username:'" + username + '\'' +
+                ", password:'" + password + '\'' +
+                ", role:'" + role + '\'' +
                 '}';
     }
 }
