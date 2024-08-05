@@ -42,4 +42,8 @@ public interface Service {
     Map<User, List<LoggingUsersOrder>> logging(User user);
 
     DTO exportLogging(User user);
+
+    String encrypt(String text, int shift);
+
+    String decrypt(String encryptedText, int shift);
 }

@@ -53,7 +53,8 @@ public class ServiceImpl implements Service {
         return user == null;
     }
 
-    private String encrypt(String text, int shift) {
+    @Override
+    public String encrypt(String text, int shift) {
         StringBuilder result = new StringBuilder();
         for (char ch : text.toCharArray()) {
             if (Character.isLetter(ch)) {
@@ -68,7 +69,8 @@ public class ServiceImpl implements Service {
         return result.toString();
     }
 
-    private String decrypt(String encryptedText, int shift) {
+    @Override
+    public String decrypt(String encryptedText, int shift) {
         return encrypt(encryptedText, -shift);
     }
 
